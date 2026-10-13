@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -281,6 +282,133 @@ with right:
         labels={"ROAS": "ROAS (times)", "Campaign_Name": "Campaign"}
     )
     st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------- ADDITIONAL EXPLORATORY ANALYSIS CHARTS ----------
+st.divider()
+st.header("Exploratory Data Analysis")
+
+# 1. Advertising spend versus revenue by channel
+st.subheader("Advertising Spend vs Revenue by Channel")
+spend_revenue_long = channel.melt(
+    id_vars="Channel",
+    value_vars=["Spend", "Revenue"],
+    var_name="Metric",
+    value_name="Amount"
+)
+fig = px.bar(
+    spend_revenue_long, x="Channel", y="Amount", color="Metric",
+    barmode="group",
+    title="Advertising Spend vs Revenue by Channel"
+)
+fig.update_layout(xaxis_title="Marketing Channel", yaxis_title="Amount")
+st.plotly_chart(fig, use_container_width=True)
+
+# 2. Conversions by channel
+st.subheader("Conversions by Marketing Channel")
+fig = px.bar(
+    channel.sort_values("Conversions"),
+    x="Conversions", y="Channel", orientation="h",
+    title="Total Conversions by Marketing Channel",
+    labels={"Conversions": "Conversions", "Channel": "Marketing Channel"}
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# 3. Number of records by channel
+st.subheader("Campaign Records by Channel")
+record_counts = filtered["Channel"].value_counts().rename_axis("Channel").reset_index(name="Records")
+fig = px.bar(
+    record_counts, x="Channel", y="Records",
+    title="Number of Records by Marketing Channel"
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# 4. Impressions versus clicks
+st.subheader("Relationship Between Impressions and Clicks")
+fig = px.scatter(
+    filtered, x="Impressions", y="Clicks", color="Channel",
+    hover_data=["Campaign_ID", "Campaign_Name"],
+    title="Impressions vs Clicks by Campaign Record",
+    opacity=0.55
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# 5. Distribution histograms for key metrics
+st.subheader("Distribution of Campaign Metrics")
+hist_metrics = ["Spend", "Revenue", "Clicks", "Conversions", "ROAS"]
+hist_data = filtered.copy()
+hist_data["ROAS"] = hist_data["Revenue"] / hist_data["Spend"].replace(0, np.nan)
+available_hist = [col for col in hist_metrics if col in hist_data.columns and hist_data[col].notna().any()]
+if available_hist:
+    chosen_hist = st.selectbox("Choose a metric to view its distribution", available_hist)
+    fig = px.histogram(
+        hist_data.dropna(subset=[chosen_hist]), x=chosen_hist, nbins=40,
+        title=f"Distribution of {chosen_hist}"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+# 6. Correlation heatmap using available underlying measures
+corr_cols = [
+    col for col in [
+        "Impressions", "Clicks", "Conversions", "Spend", "Revenue",
+        "Bounce_Rate", "Avg_Session_Duration"
+    ]
+    if col in filtered.columns and pd.to_numeric(filtered[col], errors="coerce").notna().any()
+]
+if len(corr_cols) >= 2:
+    st.subheader("Correlation Between Performance Metrics")
+    corr_data = filtered[corr_cols].apply(pd.to_numeric, errors="coerce").corr()
+    fig = px.imshow(
+        corr_data, text_auto=".2f", aspect="auto", zmin=-1, zmax=1,
+        color_continuous_scale="RdBu_r",
+        title="Correlation Matrix of Campaign Performance Metrics"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+# 7. Campaign-level spend versus revenue, coloured by ROAS
+st.subheader("Campaign Spend vs Revenue")
+campaign_scatter = campaign[
+    (campaign["Spend"] > 0) & campaign["ROAS"].notna()
+].copy()
+if not campaign_scatter.empty:
+    fig = px.scatter(
+        campaign_scatter, x="Spend", y="Revenue", color="ROAS",
+        size="Conversions", hover_name="Campaign_Name",
+        hover_data=["Campaign_ID", "Channel"],
+        title="Campaign Spend vs Revenue (Colour Represents ROAS)",
+        color_continuous_scale="Viridis"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("No campaigns with positive advertising spend are available for this chart.")
+
+# 8. Spend and revenue boxplots
+st.subheader("Spread of Spend and Revenue")
+box_metric = st.selectbox("Choose a metric for the boxplot", ["Spend", "Revenue", "ROAS"], key="box_metric")
+box_data = hist_data.dropna(subset=[box_metric])
+if not box_data.empty:
+    fig = px.box(box_data, y=box_metric, points="outliers", title=f"Boxplot of {box_metric}")
+    st.plotly_chart(fig, use_container_width=True)
+
+# 9. Revenue by region
+st.subheader("Revenue Contribution by Region")
+region_data = filtered.groupby("Region", as_index=False)["Revenue"].sum().sort_values("Revenue")
+fig = px.bar(
+    region_data, x="Revenue", y="Region", orientation="h",
+    title="Revenue Contribution by Region"
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# 10. Revenue by product category
+st.subheader("Revenue by Product Category")
+category_data = filtered.groupby("Product_Category", as_index=False)["Revenue"].sum().sort_values("Revenue")
+fig = px.bar(
+    category_data, x="Revenue", y="Product_Category", orientation="h",
+    title="Revenue by Product Category",
+    labels={"Product_Category": "Product Category"}
+)
+st.plotly_chart(fig, use_container_width=True)
+
 
 # ---------- MANAGEMENT ATTENTION ----------
 st.subheader("Areas for Management Attention")
