@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Digital Marketing Campaign Performance Dashboard")
+st.title(" Digital Marketing Campaign Performance Dashboard")
 st.caption(
     "Explore marketing effectiveness, campaign returns, "
     "regional performance and business opportunities."
@@ -108,6 +107,7 @@ for column, label in [
     ("Region", "Region"),
     ("Product_Category", "Product category"),
     ("Campaign_Type", "Campaign type"),
+    ("Target_Audience", "Target audience"),
     ("Campaign_ID", "Campaign")
 ]:
     filtered = multiselect_filter(filtered, column, label)
